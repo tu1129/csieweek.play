@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>頂級網域 TLD 配對挑戰賽</title>
+    <!-- 引入 Tailwind CSS 提供乾淨簡約的現代化排版 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #0f172a; /* 採用舒適深色背景 */
+            color: #f1f5f9;
+        }
+        /* 簡單的卡片錯誤晃動動畫 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .shake {
+            animation: shake 0.3s ease-in-out;
+            border-color: #ef4444 !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 md:p-6">
+
+    <!-- 頂部精簡狀態與說明 -->
+    <header class="max-w-5xl w-full mx-auto mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-slate-850 pb-4">
+        <div>
+            <h1 class="text-xl md:text-2xl font-black text-white flex items-center gap-2">
+                🌐 頂級網域 TLD 配對挑戰
+            </h1>
+            <p class="text-xs text-slate-400 mt-1">點擊下方卡片進行 3 合 1 配對（網址 ➔ 名稱 ➔ LOGO）</p>
+        </div>
+        
+        <!-- 簡潔進度/得分 -->
+        <div class="flex items-center gap-6 bg-slate-900 px-4 py-2 rounded-xl border border-slate-800">
+            <div class="text-center">
+                <span class="block text-[10px] text-slate-400 font-bold uppercase">已通關</span>
+                <span id="progress-text" class="text-sm font-bold text-sky-400">0 / 7</span>
+            </div>
+            <div class="h-6 w-[1px] bg-slate-800"></div>
+            <div class="text-center">
+                <span class="block text-[10px] text-slate-400 font-bold uppercase">目前得分</span>
+                <span id="score-text" class="text-sm font-bold text-emerald-400">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 遊戲主要操作區域 -->
+    <main class="max-w-5xl w-full mx-auto flex-grow flex flex-col justify-center">
+        
+        <!-- 三行配對面板 -->
+        <div id="game-board" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- 第一行：網域網址卡 -->
+            <div class="flex flex-col gap-3">
+                <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider px-1">1. 選擇網址卡</div>
+                <div id="col-url" class="flex flex-col gap-2.5">
+                    <!-- JavaScript 將在此動態生成卡片 -->
+                </div>
+            </div>
+
+            <!-- 第二行：單位名稱卡 -->
+            <div class="flex flex-col gap-3">
+                <div class="text-xs font-bold text-amber-400 uppercase tracking-wider px-1">2. 選擇名稱卡</div>
+                <div id="col-name" class="flex flex-col gap-2.5">
+                    <!-- JavaScript 將在此動態生成卡片 -->
+                </div>
+            </div>
+
+            <!-- 第三行：網站 LOGO 卡 (不裁切防跑版設計) -->
+            <div class="flex flex-col gap-3">
+                <div class="text-xs font-bold text-sky-400 uppercase tracking-wider px-1">3. 選擇標誌卡</div>
+                <div id="col-logo" class="grid grid-cols-2 gap-2.5">
+                    <!-- JavaScript 將在此動態生成卡片 -->
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 成功配對時的教育說明彈窗 (Modal) -->
+    <div id="edu-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div class="flex items-center gap-4 mb-4 border-b border-slate-800 pb-4">
+                <!-- 彈窗內部的防裁切 LOGO 容器 -->
+                <div id="modal-logo-container" class="w-16 h-16 bg-slate-950 rounded-xl flex items-center justify-center overflow-hidden border border-slate-800 p-2 shrink-0">
+                    <!-- 自訂 LOGO 將自動無裁切地縮放於此 -->
+                </div>
+                <div>
+                    <span class="text-[10px] text-emerald-400 font-bold tracking-wider">配對成功！</span>
+                    <h3 id="modal-title" class="text-lg font-black text-white"></h3>
+                    <p id="modal-url" class="text-xs text-slate-400 font-mono mt-0.5"></p>
+                </div>
+            </div>
+            
+            <div class="mb-5">
+                <span class="text-xs text-slate-500 font-bold block mb-1">網域安全防詐小知識：</span>
+                <p id="modal-desc" class="text-sm text-slate-300 leading-relaxed bg-slate-950/40 p-3.5 rounded-xl border border-slate-800/60"></p>
+            </div>
+
+            <button onclick="closeEduModal()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 px-4 rounded-xl transition">
+                我知道了，繼續挑戰 ➔
+            </button>
+        </div>
+    </div>
+
+    <!-- 終局大捷結算畫面 (Modal) -->
+    <div id="victory-modal" class="fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl">
+            <span class="text-5xl block mb-3">🏆</span>
+            <h3 class="text-xl font-bold text-white mb-2">恭喜通關！</h3>
+            <p class="text-xs text-slate-400 mb-5">您已能完美辨識政府 (.gov)、教育 (.edu)、非營利組織 (.org) 及商業網域 (.com) 的安全防詐網址！</p>
+            
+            <div class="bg-slate-950 p-4 rounded-xl mb-6 border border-slate-800 flex justify-around">
+                <div>
+                    <span class="text-[10px] text-slate-500 block">最終得分</span>
+                    <span id="final-score" class="text-xl font-black text-emerald-400">0</span>
+                </div>
+                <div class="w-[1px] bg-slate-800"></div>
+                <div>
+                    <span class="text-[10px] text-slate-500 block">通關狀態</span>
+                    <span class="text-xl font-black text-sky-400">100% 成功</span>
+                </div>
+            </div>
+
+            <button onclick="restartGame()" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-3 rounded-xl transition">
+                再玩一次 🔄
+            </button>
+        </div>
+    </div>
+
+    <!-- 簡約頁尾 -->
+    <footer class="max-w-5xl w-full mx-auto text-center text-[11px] text-slate-600 mt-6 border-t border-slate-850 pt-4">
+        安全提示：請認明台灣官方機關網址結尾一律為 <span class="text-slate-400">.gov.tw</span> / 各級學校網址結尾一律為 <span class="text-slate-400">.edu.tw</span>。
+    </footer>
+
+    <!-- 遊戲資料與主要邏輯 -->
+    <script>
+        /* =========================================================================
+           📝 【自訂 LOGO 更換說明區】
+           
+           您可以在下方 gameData 陣列中的每個單位 `logo` 欄位填入：
+           👉 方式 A (最簡單)：直接貼上圖片的 URL（如："https://yourdomain.com/logo.png"）
+           👉 方式 B：直接貼上該圖示的 SVG 原始碼（如：`<svg ...> ... </svg>`）
+           
+           💡 系統會自動辨識並縮放，保證 Logo 能夠完全顯示在邊框中，絕不裁切跑版！
+           ========================================================================= */
+        const gameData = [
+            {
+                id: "president",
+                tld: ".gov.tw",
+                urlHtml: "https://www.president.<strong>gov.tw</strong>",
+                name: "中華民國總統府",
+                
+                // ------------------ 📝 1. 總統府 LOGO (更換此處) ------------------
+                logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvTDKF7Tb0uibs7WYORtXLyn30BrtFJpqoNA&s",
+                // -----------------------------------------------------------------
+                
+                desc: "「.gov.tw」是台灣政府機關的專屬域名，一般民眾、團體 or 私人企業絕對無法申請。如果收到自稱是公家機關的網址，結尾卻不是「.gov.tw」，即為詐騙網頁！"
+            },
+            {
+                id: "cyut",
+                tld: ".edu.tw",
+                urlHtml: "https://www.cyut.<strong>edu.tw</strong>",
+                name: "朝陽科技大學",
+                
+                // ------------------ 📝 2. 朝陽科技大學 LOGO (更換此處) -------------
+                logo: "https://static.wixstatic.com/media/0982ea_fdefa62abe2d4612a17c6d0b39711e24~mv2.png/v1/fit/w_2500,h_1330,al_c/0982ea_fdefa62abe2d4612a17c6d0b39711e24~mv2.png",
+                // -----------------------------------------------------------------
+                
+                desc: "「.edu.tw」代表台灣大專院校與教育學術機構。朝陽科大網址依此標準設定，能確保該網站具有正式學術實體背景，保障校園選課及學籍系統的安全。"
+            },
+            {
+                id: "nchc",
+                tld: ".org.tw",
+                urlHtml: "https://www.nchc.<strong>org.tw</strong>",
+                name: "國家高速網路與計算中心",
+                
+                // ------------------ 📝 3. 國家高網中心 LOGO (更換此處) --------------
+                logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7KHOjTkAWapp360YnIjW8KilNHls8tQVJrw&s",
+                // -----------------------------------------------------------------
+                
+                desc: "「.org.tw」為台灣非營利組織、公共法人團體專用網域。國家級的高速運算中心亦以此後綴彰顯其公共研究單位的非營利性質。"
+            },
+            {
+                id: "youtube",
+                tld: ".com",
+                urlHtml: "https://www.youtube.<strong>com</strong>",
+                name: "YouTube 影音平台",
+                
+                // ------------------ 📝 4. YouTube LOGO (更換此處) -----------------
+                logo: "https://img.ltn.com.tw/Upload/3c/page/2019/11/08/191108-38572-1.jpg",
+                // -----------------------------------------------------------------
+                
+                desc: "「.com」是全球最普遍的商業公司或營利性質網站域名，任何人都可以付費註冊。因其註冊門檻極低，若有金融、政府相關服務使用此域名，需多加警惕是否有偽造風險。"
+            },
+            {
+                id: "wikipedia",
+                tld: ".org",
+                urlHtml: "https://zh.wikipedia.<strong>org</strong>",
+                name: "維基百科 Wikipedia",
+                
+                // ------------------ 📝 5. 維基百科 LOGO (更換此處) -----------------
+                logo: "https://cdn0.techbang.com/system/excerpt_images/4376/original/wikititle.jpg?1292388901",
+                // -----------------------------------------------------------------
+                
+                desc: "「.org」是國際通用的非營利組織網域。維基百科作為提供免費公共知識的百科全書，秉持不刊登廣告理念使用此域名。"
+            },
+            {
+                id: "nust",
+                tld: ".org.tw",
+                urlHtml: "https://www.nust.<strong>org.tw</strong>",
+                name: "台灣學生聯合會",
+                
+                // ------------------ 📝 6. 台灣學生聯合會 LOGO (更換此處) ------------
+                logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTN6FyF7YSK7J4IVLH_KyZf-_uoTrInYnLUFA&s",
+                // -----------------------------------------------------------------
+                
+                desc: "「台灣學生聯合會」為國內立案的非營利學生組織，網址採用「.org.tw」，代表其經由內政部或相關主管機關合法登記成立。"
+            },
+            {
+                id: "cyutcsie",
+                tld: ".edu.tw",
+                urlHtml: "https://csie.cyut.<strong>edu.tw</strong>",
+                name: "朝陽科大資訊工程系",
+                
+                // ------------------ 📝 7. 朝陽科大資工系 LOGO (更換此處) ------------
+                logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqOsSbTuCWwy1I73bAvGhwuLUAqM-kS_dQ4w&s",
+                // -----------------------------------------------------------------
+                
+                desc: "學術機構「.edu.tw」前方通常會加入子域名（Subdomain）來表示不同的系所或學院。此處的「csie」即代表朝陽科大的資訊工程系網頁。"
+            }
+        ];
+
+        // 遊戲運行狀態變數
+        let score = 0;
+        let matchedCount = 0;
+        let matchedIds = new Set();
+
+        // 玩家目前選取的暫存
+        let selectedUrl = null;
+        let selectedName = null;
+        let selectedLogo = null;
+
+        // 陣列洗牌算法
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        // 關鍵：將 LOGO 輸入值 (網址或 SVG 代碼) 渲染為安全不裁切容器
+        function renderLogoHtml(logoInput) {
+            if (!logoInput) {
+                return `<div class="w-full h-full flex items-center justify-center"><span class="text-2xl">🌐</span></div>`;
+            }
+            const trimmed = logoInput.trim();
+            // 偵測是否為 SVG 原始碼
+            if (trimmed.startsWith("<svg") || trimmed.startsWith("<SVG")) {
+                return `
+                    <div class="w-full h-full flex items-center justify-center p-2 [&>svg]:max-w-full [&>svg]:max-h-full [&>svg]:w-auto [&>svg]:h-auto [&>svg]:mx-auto">
+                        ${trimmed}
+                    </div>
+                `;
+            } else {
+                // 如果是圖片網址，利用 object-contain 保障不跑版、不裁切
+                return `
+                    <div class="w-full h-full flex items-center justify-center p-2">
+                        <img src="${trimmed}" alt="Logo" class="max-w-full max-h-full object-contain" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\'text-2xl\'>🌐</span>';" />
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染卡片至版面上
+        function renderBoard() {
+            // 洗牌打亂
+            const urls = shuffle([...gameData]);
+            const names = shuffle([...gameData]);
+            const logos = shuffle([...gameData]);
+
+            const colUrl = document.getElementById("col-url");
+            const colName = document.getElementById("col-name");
+            const colLogo = document.getElementById("col-logo");
+
+            colUrl.innerHTML = "";
+            colName.innerHTML = "";
+            colLogo.innerHTML = "";
+
+            // 1. 生成第一行（網域網址）
+            urls.forEach(item => {
+                const btn = document.createElement("button");
+                btn.id = `url-${item.id}`;
+                btn.className = "w-full text-left bg-slate-900/60 border border-slate-800 hover:border-slate-700 p-3 rounded-xl transition focus:outline-none flex flex-col gap-0.5 cursor-pointer";
+                btn.innerHTML = `
+                    <span class="text-[9px] text-slate-500 font-mono">https://</span>
+                    <span class="text-xs text-slate-200 tracking-wide break-all">${item.urlHtml}</span>
+                `;
+                btn.onclick = () => handleSelect('url', item.id, btn);
+                colUrl.appendChild(btn);
+            });
+
+            // 2. 生成第二行（名稱）
+            names.forEach(item => {
+                const btn = document.createElement("button");
+                btn.id = `name-${item.id}`;
+                btn.className = "w-full text-left bg-slate-900/60 border border-slate-800 hover:border-slate-700 p-4 rounded-xl transition focus:outline-none flex justify-between items-center font-bold text-xs text-slate-200 cursor-pointer";
+                btn.innerHTML = `
+                    <span>${item.name}</span>
+                `;
+                btn.onclick = () => handleSelect('name', item.id, btn);
+                colName.appendChild(btn);
+            });
+
+            // 3. 生成第三行（Logo）
+            logos.forEach(item => {
+                const btn = document.createElement("button");
+                btn.id = `logo-${item.id}`;
+                btn.className = "w-full aspect-square bg-slate-900/60 border border-slate-800 hover:border-slate-700 rounded-xl transition focus:outline-none cursor-pointer flex items-center justify-center overflow-hidden relative";
+                btn.innerHTML = renderLogoHtml(item.logo);
+                btn.onclick = () => handleSelect('logo', item.id, btn);
+                colLogo.appendChild(btn);
+            });
+        }
+
+        // 點選邏輯
+        function handleSelect(type, id, element) {
+            if (matchedIds.has(id)) return;
+
+            if (type === 'url') {
+                if (selectedUrl) {
+                    selectedUrl.element.classList.remove("border-emerald-500", "bg-emerald-950/20", "ring-1", "ring-emerald-500");
+                }
+                selectedUrl = { id, element };
+                element.classList.add("border-emerald-500", "bg-emerald-950/20", "ring-1", "ring-emerald-500");
+            } else if (type === 'name') {
+                if (selectedName) {
+                    selectedName.element.classList.remove("border-amber-500", "bg-amber-950/20", "ring-1", "ring-amber-500");
+                }
+                selectedName = { id, element };
+                element.classList.add("border-amber-500", "bg-amber-950/20", "ring-1", "ring-amber-500");
+            } else if (type === 'logo') {
+                if (selectedLogo) {
+                    selectedLogo.element.classList.remove("border-sky-500", "bg-sky-950/20", "ring-1", "ring-sky-500");
+                }
+                selectedLogo = { id, element };
+                element.classList.add("border-sky-500", "bg-sky-950/20", "ring-1", "ring-sky-500");
+            }
+
+            // 集滿三個即進行匹配檢查
+            if (selectedUrl && selectedName && selectedLogo) {
+                checkMatch();
+            }
+        }
+
+        // 匹配檢查
+        function checkMatch() {
+            const urlId = selectedUrl.id;
+            const nameId = selectedName.id;
+            const logoId = selectedLogo.id;
+
+            const elUrl = selectedUrl.element;
+            const elName = selectedName.element;
+            const elLogo = selectedLogo.element;
+
+            if (urlId === nameId && nameId === logoId) {
+                // 配對成功！
+                const targetId = urlId;
+                matchedIds.add(targetId);
+                matchedCount++;
+                score += 100;
+
+                document.getElementById("score-text").textContent = score;
+                document.getElementById("progress-text").textContent = `${matchedCount} / ${gameData.length}`;
+
+                // 移除選取高亮，改為鎖定與淡出特效
+                setTimeout(() => {
+                    [elUrl, elName, elLogo].forEach(el => {
+                        el.classList.remove(
+                            "border-emerald-500", "border-amber-500", "border-sky-500",
+                            "bg-emerald-950/20", "bg-amber-950/20", "bg-sky-950/20",
+                            "ring-1", "ring-emerald-500", "ring-amber-500", "ring-sky-500"
+                        );
+                        el.classList.add("border-emerald-500/20", "bg-emerald-950/5", "opacity-40", "cursor-not-allowed");
+                    });
+                    
+                    elName.innerHTML = `<span>${elName.querySelector('span').textContent}</span> <span class="text-[10px] text-emerald-400 font-bold">✓ 已成功</span>`;
+                    elLogo.innerHTML += `<div class="absolute inset-0 bg-slate-950/40 flex items-center justify-center text-emerald-400 text-lg font-bold">✓</div>`;
+
+                    showEduModal(targetId);
+                }, 150);
+
+                selectedUrl = null;
+                selectedName = null;
+                selectedLogo = null;
+
+            } else {
+                // 錯誤，扣分並震動
+                score = Math.max(0, score - 20);
+                document.getElementById("score-text").textContent = score;
+
+                elUrl.classList.add("shake");
+                elName.classList.add("shake");
+                elLogo.classList.add("shake");
+
+                setTimeout(() => {
+                    elUrl.classList.remove("shake", "border-emerald-500", "bg-emerald-950/20", "ring-1", "ring-emerald-500");
+                    elName.classList.remove("shake", "border-amber-500", "bg-amber-950/20", "ring-1", "ring-amber-500");
+                    elLogo.classList.remove("shake", "border-sky-500", "bg-sky-950/20", "ring-1", "ring-sky-500");
+                    
+                    selectedUrl = null;
+                    selectedName = null;
+                    selectedLogo = null;
+                }, 500);
+            }
+        }
+
+        // 展示說明視窗
+        function showEduModal(id) {
+            const data = gameData.find(item => item.id === id);
+            
+            // 彈窗內部 LOGO 渲染
+            document.getElementById("modal-logo-container").innerHTML = renderLogoHtml(data.logo);
+            document.getElementById("modal-title").textContent = data.name;
+            document.getElementById("modal-url").innerHTML = data.urlHtml;
+            document.getElementById("modal-desc").textContent = data.desc;
+
+            document.getElementById("edu-modal").classList.remove("hidden");
+        }
+
+        // 關閉說明視窗
+        function closeEduModal() {
+            document.getElementById("edu-modal").classList.add("hidden");
+            if (matchedCount === gameData.length) {
+                showVictory();
+            }
+        }
+
+        // 展示大捷結算
+        function showVictory() {
+            document.getElementById("final-score").textContent = score;
+            document.getElementById("victory-modal").classList.remove("hidden");
+        }
+
+        // 重啟遊戲
+        function restartGame() {
+            document.getElementById("victory-modal").classList.add("hidden");
+            initGame();
+        }
+
+        // 遊戲開局初始化
+        function initGame() {
+            score = 0;
+            matchedCount = 0;
+            matchedIds.clear();
+            selectedUrl = null;
+            selectedName = null;
+            selectedLogo = null;
+
+            document.getElementById("score-text").textContent = "0";
+            document.getElementById("progress-text").textContent = `0 / ${gameData.length}`;
+            
+            renderBoard();
+        }
+
+        // 載入自動執行
+        window.onload = function() {
+            initGame();
+        };
+    </script>
+</body>
+</html>
